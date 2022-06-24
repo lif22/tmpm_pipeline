@@ -7,13 +7,6 @@ from tqdm import tqdm
 from spacy.matcher import Matcher
 import statistics
 
-# settings
-TOPIC_LABELS = [None, "Initial Application by Candidate",
-        "Automatic Reply", "Internal Communication / Clarification of Requirements",
-        "Organizational Communication with Candidate for Clarification of Skills or Interview Invitation",
-        "Job Offer / Contract Negotiation", "Application Declined"
-        ]
-
 class Message:
     def __init__(self, from_, to, subject, content, meta, trainLabel):
         self.from_ = from_
@@ -27,19 +20,19 @@ class Message:
             raise ValueError("This message does not have datetime information which is necessary!")
     
     @staticmethod
-    def mapDetectedCategory(id):
+    def mapDetectedCategory(id, topicLabels):
         if id == 1:
-            return TOPIC_LABELS[1]
+            return topicLabels[1]
         elif id == 2:
-            return TOPIC_LABELS[6]
+            return topicLabels[6]
         elif id in (9,6):
-            return TOPIC_LABELS[5]
+            return topicLabels[5]
         elif id in (7,0,4):
-            return TOPIC_LABELS[4]
+            return topicLabels[4]
         elif id == 3:
-            return TOPIC_LABELS[3]
+            return topicLabels[3]
         elif id == 5:
-            return TOPIC_LABELS[2]
+            return topicLabels[2]
         elif id == 8: # not mapped
             return "?"
 
@@ -125,14 +118,14 @@ class CasesList(list):
                     out.append(message)
         return out
     
-    def generateEventLog(self, name, filePath):
+    def generateEventLog(self, name, filePath, topicLabels):
         log = []
         for case in self:
             for m in case.messages:
                 line = dict()
                 line["Case"] = case.clusterId
                 line["Date"] = m.meta["Datetime"]
-                line["Action"] = Message.mapDetectedCategory(m.detectedLabel)
+                line["Action"] = Message.mapDetectedCategory(m.detectedLabel, topicLabels)
                 log.append(line)
                 pdlog = pd.DataFrame(log)
                 fileName = f"eventlog_{name}.csv"
@@ -191,7 +184,7 @@ class CasesList(list):
             train_label = row["Label"]
             m = Message(from_, to, subject, content, meta, train_label)
             if not pd.isnull(meta["In-Reply-To"]):
-                # check in-reply-to field to creat thread
+                # check in-reply-to field to create thread
                 clusterId = cases.findClusterByMessageId(meta["In-Reply-To"])
                 if clusterId:
                     # add message to existing cluster
